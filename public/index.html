@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCN Sales Tracking & Financial Analysis</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 20px;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+    h2 {
+      margin-top: 0;
+      color: #0f172a;
+    }
+    .top-bar {
+      background: #ffffff;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .field-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .field-group label {
+      font-weight: 600;
+    }
+    .field-group input[type="number"], 
+    .field-group input[type="month"] {
+      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 0.95rem;
+    }
+    .save-status {
+      margin-left: auto;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-text {
+      font-weight: 600;
+      color: #16a34a;
+      min-width: 70px;
+    }
+    .btn {
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .save-btn {
+      background: #2563eb;
+      color: white;
+    }
+    .save-btn:hover {
+      background: #1d4ed8;
+    }
+    .reset-btn {
+      background: #ef4444;
+      color: white;
+    }
+    .reset-btn:hover {
+      background: #dc2626;
+    }
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 20px;
+    }
+    @media (max-width: 1024px) {
+      .layout-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .card-title {
+      background: #f1f5f9;
+      padding: 12px 16px;
+      font-weight: 700;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    th, td {
+      padding: 8px 10px;
+      text-align: right;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    th {
+      background-color: #2563eb;
+      color: #ffffff;
+      font-weight: 600;
+      text-align: center;
+    }
+    .side-table th {
+      background-color: #475569;
+    }
+    td:first-child, th:first-child {
+      text-align: center;
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 4px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      text-align: right;
+      font-size: 0.875rem;
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+    }
+    .calculated {
+      background-color: #f8fafc;
+      font-weight: 500;
+    }
+    .analysis-card {
+      padding: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #eff6ff;
+    }
+    .analysis-metric {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+    .analysis-metric:last-child {
+      margin-bottom: 0;
+    }
+    .text-left {
+      text-align: left !important;
+    }
+    .note-text {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .status-negative {
+      color: #dc2626;
+      font-weight: 600;
+    }
+    .status-positive {
+      color: #16a34a;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>MCN Sales Tracking & Analysis</h2>
+
+  <div class="top-bar">
+    <div class="field-group">
+      <label for="trackingMonth">Select Month:</label>
+      <input type="month" id="trackingMonth" value="2026-08" onchange="updateMonthDisplay(); loadFromLocalStorage();">
+    </div>
+
+    <div class="field-group">
+      <label for="salesQuota">Sales Quota:</label>
+      <input type="number" id="salesQuota" value="208500" style="width: 110px;" oninput="handleInputAndAutoSave()">
+    </div>
+
+    <div class="field-group">
+      <strong>As to Date Total:</strong>
+      <span id="headerTotal" style="color: #2563eb; font-weight:700;">0.00</span>
+    </div>
+
+    <div class="save-status">
+      <span id="saveNotice" class="status-text">✓ Saved</span>
+      <button class="btn save-btn" onclick="manualSave()">Save Now</button>
+      <button class="btn reset-btn" onclick="resetData()">Clear Saved Data</button>
+    </div>
+  </div>
+
+  <div class="layout-grid">
+    <!-- Daily Sales Table (Days 1 to 31) -->
+    <div class="card">
+      <div class="card-title">
+        <span>Daily Sales Entry (Days 1–31)</span>
+        <span id="selectedMonthLabel" style="font-size: 0.85rem; color: #475569; font-weight: normal;">August 2026</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>UFO</th>
+              <th>TC</th>
+              <th>Total</th>
+              <th>As to Date Ave</th>
+              <th>Forecast</th>
+              <th>Attainment</th>
+            </tr>
+          </thead>
+          <tbody id="salesBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Analysis & Financial Breakdowns -->
+    <div>
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-title">Analysis Data (Base: 73205.00)</div>
+        <div class="analysis-card">
+          <div class="analysis-metric">
+            <span><strong>Target Base / Reference:</strong></span>
+            <span style="font-weight: 700; color: #1d4ed8;">73205.00</span>
+          </div>
+          <div class="analysis-metric">
+            <span><strong>MTD Actual Sales:</strong></span>
+            <span id="analysisSalesVal" style="font-weight: 700;">0.00</span>
+          </div>
+          <div class="analysis-metric">
+            <span><strong>Base Target Variance:</strong></span>
+            <span id="analysisVariance" class="status-positive">+0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expense Table -->
+      <div class="card">
+        <div class="card-title">Financial & Expense Breakdown</div>
+        <table class="side-table">
+          <thead>
+            <tr>
+              <th class="text-left">Item</th>
+              <th>Amount</th>
+              <th>Ratio</th>
+              <th class="text-left">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" style="font-weight: bold;">SALES</td>
+              <td id="expSalesCell">0.00</td>
+              <td>-</td>
+              <td class="text-left note-text">Projected sales DAS</td>
+            </tr>
+            <tr>
+              <td class="text-left">Set up</td>
+              <td>-</td>
+              <td>-</td>
+              <td class="text-left note-text"></td>
+            </tr>
+            <tr>
+              <td class="text-left">Manpower</td>
+              <td><input type="number" id="expManpower" value="51150" oninput="handleInputAndAutoSave()"></td>
+              <td id="ratioManpower">0.00%</td>
+              <td class="text-left note-text">2 manpower with 11 hrs duty</td>
+            </tr>
+            <tr>
+              <td class="text-left">Rent</td>
+              <td><input type="number" id="expRent" value="54992" oninput="handleInputAndAutoSave()"></td>
+              <td id="ratioRent">0.00%</td>
+              <td class="text-left note-text">Fixed rent with VAT</td>
+            </tr>
+            <tr>
+              <td class="text-left">Elect</td>
+              <td><input type="number" id="expElect" value="0" oninput="handleInputAndAutoSave()"></td>
+              <td id="ratioElect">0.00%</td>
+              <td class="text-left note-text">No billing yet</td>
+            </tr>
+            <tr>
+              <td class="text-left">Prize</td>
+              <td><input type="number" id="expPrize" value="0" oninput="handleInputAndAutoSave()"></td>
+              <td id="ratioPrize">0.00%</td>
+              <td class="text-left note-text">Actual Prize out</td>
+            </tr>
+            <tr>
+              <td class="text-left">PHSI Rent</td>
+              <td><input type="number" id="expPhsi" value="40000" oninput="handleInputAndAutoSave()"></td>
+              <td id="ratioPhsi">0.00%</td>
+              <td class="text-left note-text"></td>
+            </tr>
+            <tr style="background-color: #fef2f2;">
+              <td class="text-left" style="font-weight: bold;">Net Income</td>
+              <td id="netVal" class="status-negative">0.00</td>
+              <td id="ratioNet" class="status-negative">0.00%</td>
+              <td class="text-left note-text">Net Profit / Loss</td>
+            </tr>
+            <tr style="background-color: #f1f5f9; font-weight: bold;">
+              <td class="text-left">Total EX</td>
+              <td id="totalExVal">0.00</td>
+              <td id="ratioTotalEx">0.00%</td>
+              <td class="text-left note-text">Total Expenses</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const defaultData = [
+      { day: 1, ufo: 4450, tc: 4070 },
+      { day: 2, ufo: 4100, tc: 2890 },
+      { day: 3, ufo: 1900, tc: 1800 },
+      { day: 4, ufo: 3975, tc: 2740 },
+      { day: 5, ufo: 2400, tc: 2655 },
+      { day: 6, ufo: 4150, tc: 2325 },
+      { day: 7, ufo: 5825, tc: 4130 },
+      { day: 8, ufo: 3775, tc: 3700 },
+      { day: 9, ufo: 6750, tc: 3910 },
+      { day: 10, ufo: 1700, tc: 3980 },
+      { day: 11, ufo: 4650, tc: 4510 },
+      { day: 12, ufo: 2000, tc: 1095 },
+      { day: 13, ufo: 4125, tc: 4610 },
+      { day: 14, ufo: 8150, tc: 4540 },
+      { day: 15, ufo: 3000, tc: 3110 },
+      { day: 16, ufo: 7025, tc: 4440 },
+      { day: 17, ufo: 6875, tc: 3560 },
+      { day: 18, ufo: 2600, tc: 3050 },
+      { day: 19, ufo: 2950, tc: 3650 }
+    ];
+
+    const tbody = document.getElementById('salesBody');
+    let saveTimeout;
+
+    function initTable() {
+      tbody.innerHTML = '';
+      for (let day = 1; day <= 31; day++) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${day}</td>
+          <td><input type="number" class="ufo-input" data-day="${day}" value="" oninput="handleInputAndAutoSave()"></td>
+          <td><input type="number" class="tc-input" data-day="${day}" value="" oninput="handleInputAndAutoSave()"></td>
+          <td class="calculated" id="total-${day}">0.00</td>
+          <td class="calculated" id="ave-${day}">0.00</td>
+          <td class="calculated" id="forecast-${day}">0.00</td>
+          <td class="calculated" id="attainment-${day}">0.00%</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function updateMonthDisplay() {
+      const monthInput = document.getElementById('trackingMonth').value;
+      if (monthInput) {
+        const [year, month] = monthInput.split('-');
+        const dateObj = new Date(year, month - 1);
+        const formattedMonth = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        document.getElementById('selectedMonthLabel').innerText = formattedMonth;
+      }
+    }
+
+    function getStorageKey() {
+      const month = document.getElementById('trackingMonth').value || '2026-08';
+      return 'mcn_local_data_' + month;
+    }
+
+    function setSaveStatus(text, color) {
+      const el = document.getElementById('saveNotice');
+      el.innerText = text;
+      el.style.color = color;
+    }
+
+    function handleInputAndAutoSave() {
+      calculate();
+      setSaveStatus('Saving...', '#d97706');
+
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        saveToLocalStorage();
+      }, 300);
+    }
+
+    function saveToLocalStorage() {
+      const key = getStorageKey();
+      const dailySales = {};
+      for (let day = 1; day <= 31; day++) {
+        const ufoVal = document.querySelector(`.ufo-input[data-day="${day}"]`).value;
+        const tcVal = document.querySelector(`.tc-input[data-day="${day}"]`).value;
+        dailySales[day] = { ufo: ufoVal, tc: tcVal };
+      }
+
+      const storeObj = {
+        salesQuota: document.getElementById('salesQuota').value,
+        expenses: {
+          manpower: document.getElementById('expManpower').value,
+          rent: document.getElementById('expRent').value,
+          elect: document.getElementById('expElect').value,
+          prize: document.getElementById('expPrize').value,
+          phsi: document.getElementById('expPhsi').value
+        },
+        dailySales: dailySales
+      };
+
+      try {
+        localStorage.setItem(key, JSON.stringify(storeObj));
+        setSaveStatus('✓ Saved', '#16a34a');
+      } catch (e) {
+        setSaveStatus('Error Saving', '#dc2626');
+      }
+    }
+
+    function manualSave() {
+      calculate();
+      setSaveStatus('Saving...', '#d97706');
+      setTimeout(() => {
+        saveToLocalStorage();
+      }, 100);
+    }
+
+    function loadFromLocalStorage() {
+      const key = getStorageKey();
+      const raw = localStorage.getItem(key);
+      
+      let data = null;
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch (e) {
+          console.error("Failed to parse localStorage data", e);
+        }
+      }
+
+      if (data) {
+        document.getElementById('salesQuota').value = data.salesQuota ?? 208500;
+        if (data.expenses) {
+          document.getElementById('expManpower').value = data.expenses.manpower ?? 51150;
+          document.getElementById('expRent').value = data.expenses.rent ?? 54992;
+          document.getElementById('expElect').value = data.expenses.elect ?? 0;
+          document.getElementById('expPrize').value = data.expenses.prize ?? 0;
+          document.getElementById('expPhsi').value = data.expenses.phsi ?? 40000;
+        }
+        if (data.dailySales) {
+          for (let day = 1; day <= 31; day++) {
+            const ufoEl = document.querySelector(`.ufo-input[data-day="${day}"]`);
+            const tcEl = document.querySelector(`.tc-input[data-day="${day}"]`);
+            if (data.dailySales[day]) {
+              ufoEl.value = data.dailySales[day].ufo;
+              tcEl.value = data.dailySales[day].tc;
+            } else {
+              ufoEl.value = '';
+              tcEl.value = '';
+            }
+          }
+        }
+      } else {
+        // Fallback default values for initial view
+        document.getElementById('salesQuota').value = 208500;
+        document.getElementById('expManpower').value = 51150;
+        document.getElementById('expRent').value = 54992;
+        document.getElementById('expElect').value = 0;
+        document.getElementById('expPrize').value = 0;
+        document.getElementById('expPhsi').value = 40000;
+
+        for (let day = 1; day <= 31; day++) {
+          const defaultRow = defaultData.find(d => d.day === day);
+          const ufoEl = document.querySelector(`.ufo-input[data-day="${day}"]`);
+          const tcEl = document.querySelector(`.tc-input[data-day="${day}"]`);
+          ufoEl.value = defaultRow ? defaultRow.ufo : '';
+          tcEl.value = defaultRow ? defaultRow.tc : '';
+        }
+      }
+
+      calculate();
+      setSaveStatus('✓ Saved', '#16a34a');
+    }
+
+    function calculate() {
+      const quota = parseFloat(document.getElementById('salesQuota').value) || 0;
+      let runningTotal = 0;
+      let activeDays = 0;
+
+      for (let day = 1; day <= 31; day++) {
+        const ufoEl = document.querySelector(`.ufo-input[data-day="${day}"]`);
+        const tcEl = document.querySelector(`.tc-input[data-day="${day}"]`);
+
+        const ufo = parseFloat(ufoEl.value) || 0;
+        const tc = parseFloat(tcEl.value) || 0;
+        const hasInput = ufoEl.value !== '' || tcEl.value !== '';
+
+        const dayTotal = ufo + tc;
+        runningTotal += dayTotal;
+
+        if (hasInput) activeDays = day;
+
+        const ave = activeDays > 0 ? (runningTotal / activeDays) : 0;
+        const forecast = ave * 31;
+        const attainment = quota > 0 ? (forecast / quota) : 0;
+
+        document.getElementById(`total-${day}`).innerText = dayTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById(`ave-${day}`).innerText = ave.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById(`forecast-${day}`).innerText = forecast.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById(`attainment-${day}`).innerText = (attainment * 100).toFixed(2) + '%';
+      }
+
+      const formattedTotal = runningTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('headerTotal').innerText = formattedTotal;
+      document.getElementById('analysisSalesVal').innerText = formattedTotal;
+      document.getElementById('expSalesCell').innerText = formattedTotal;
+
+      const baseVal = 73205;
+      const diff = runningTotal - baseVal;
+      const varEl = document.getElementById('analysisVariance');
+      if (diff >= 0) {
+        varEl.className = 'status-positive';
+        varEl.innerText = '+' + diff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else {
+        varEl.className = 'status-negative';
+        varEl.innerText = diff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      calculateExpenses(runningTotal);
+    }
+
+    function calculateExpenses(currentTotalSales) {
+      const manpower = parseFloat(document.getElementById('expManpower').value) || 0;
+      const rent = parseFloat(document.getElementById('expRent').value) || 0;
+      const elect = parseFloat(document.getElementById('expElect').value) || 0;
+      const prize = parseFloat(document.getElementById('expPrize').value) || 0;
+      const phsi = parseFloat(document.getElementById('expPhsi').value) || 0;
+
+      const totalEx = manpower + rent + elect + prize + phsi;
+      const net = currentTotalSales - totalEx;
+
+      const formatRatio = (val) => currentTotalSales > 0 ? ((val / currentTotalSales) * 100).toFixed(2) + '%' : '0.00%';
+
+      document.getElementById('ratioManpower').innerText = formatRatio(manpower);
+      document.getElementById('ratioRent').innerText = formatRatio(rent);
+      document.getElementById('ratioElect').innerText = formatRatio(elect);
+      document.getElementById('ratioPrize').innerText = formatRatio(prize);
+      document.getElementById('ratioPhsi').innerText = formatRatio(phsi);
+
+      document.getElementById('totalExVal').innerText = totalEx.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('ratioTotalEx').innerText = formatRatio(totalEx);
+
+      const netEl = document.getElementById('netVal');
+      const ratioNetEl = document.getElementById('ratioNet');
+
+      netEl.innerText = net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      ratioNetEl.innerText = formatRatio(net);
+
+      if (net < 0) {
+        netEl.className = 'status-negative';
+        ratioNetEl.className = 'status-negative';
+      } else {
+        netEl.className = 'status-positive';
+        ratioNetEl.className = 'status-positive';
+      }
+    }
+
+    function resetData() {
+      const monthInput = document.getElementById('trackingMonth').value;
+      if (confirm(`Sigurado ka bang gusto mong burahin ang saved data para sa buwang (${monthInput})? Babalik ito sa zero/defaults.`)) {
+        localStorage.removeItem(getStorageKey());
+        loadFromLocalStorage();
+        setSaveStatus('Cleared', '#ef4444');
+      }
+    }
+
+    // Startup Initialization
+    initTable();
+    updateMonthDisplay();
+    loadFromLocalStorage();
+  </script>
+
+</body>
+</html>
