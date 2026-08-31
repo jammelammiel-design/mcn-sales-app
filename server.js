@@ -1,57 +1,24 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
+// Setup ng Firebase
+const firebaseConfig = {
+    apiKey: "ILAGAY_ANG_API_KEY_MO",
+    databaseURL: "https://ANG-PROJECT-MO-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+// Kapag may bagong itinype ang kahit sinong user, kusa itong magse-save sa Cloud
+function saveDataToLocalStorage() {
+    updateSaveStatusUI(true);
+    db.ref('meterData').set(pagesData, () => updateSaveStatusUI(false));
+}
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-
-// Kumuha ng data mula sa JSON file
-app.get('/api/sales', (req, res) => {
-  const month = req.query.month || '2026-08';
-  if (fs.existsSync(DATA_FILE)) {
-    try {
-      const raw = fs.readFileSync(DATA_FILE, 'utf8');
-      const allData = JSON.parse(raw || '{}');
-      return res.json(allData[month] || null);
-    } catch (e) {
-      return res.status(500).json({ error: 'Failed to read data' });
+// Nakikinig ang browser sa anumang pagbabago sa Cloud para mag-update ang screen agad
+db.ref('meterData').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        pagesData = data;
+        renderTabs();
+        loadPageIntoInputs();
+        recalculateAll();
     }
-  }
-  res.json(null);
-});
-
-// Mag-save ng data sa JSON file
-app.post('/api/sales', (req, res) => {
-  const { month, data } = req.body;
-  let allData = {};
-
-  if (fs.existsSync(DATA_FILE)) {
-    try {
-      const raw = fs.readFileSync(DATA_FILE, 'utf8');
-      allData = JSON.parse(raw || '{}');
-    } catch (e) {
-      allData = {};
-    }
-  }
-
-  allData[month] = data;
-
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(allData, null, 2));
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to save data' });
-  }
-});
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
 });
